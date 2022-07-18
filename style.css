@@ -1,0 +1,37 @@
+.container {
+    margin-top: 15px;
+}
+.dropdown-toggle::after {
+    display: none;
+}
+
+.list-group-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.task label.checked {
+    text-decoration: line-through;
+}
+
+.controls {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.filters span.active {
+    color: #3c87ff;
+}
+
+.filters span {
+    margin-right: 30px;
+    font-size: 15px;
+    cursor: pointer;
+    color: #444444;
+}
+
+.filters span i {
+    margin: 0 5px;
+}
