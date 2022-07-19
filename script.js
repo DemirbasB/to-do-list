@@ -1,48 +1,50 @@
+// NOTE Burada bir array olusturuluyor. Array, belli ya da belirsiz bir sayida deger tutmak icin kullaniliyor, Daha sonra bu degerleri dongu icerisinde kullanmak mumkun. Array genel olarak onemli bir konu, array fonksiyonlarini ogrenmek oldukca faydali olur
+// TODO Genel bir aliskanlik olarak degisken isimlerini ve fonksiyon isimlerini ingilizce olarak tanimlamaya dikkat etmenizi tavsiye ederim, simdiden bu aliskanlik edinilirse ileride sorun yasamazsiniz.
 let gorevListesi = [];
 
-if (localStorage.getItem("gorevListesi") !== null) {
-    gorevListesi = JSON.parse(localStorage.getItem("gorevListesi"));
+// TODO Yine genel bir aliskanlik olarak, tekrar eden bilgileri mutlaka bir degiskende tutmaya calisin, boylece bir degisiklik gerektiginde tek yerden yaparsiniz
+const localStorageKey = "gorevListesi";
+
+// NOTE LocalStorage apisi oldukca kullanisli bir api, kullanicinin bilgisayarinda ufak tefek degerleri tutmak icin oldukca kullanisli
+if (localStorage.getItem(localStorageKey) !== null) {
+    gorevListesi = JSON.parse(localStorage.getItem(localStorageKey));
 }
 
-let editId;
-let isEditTask = false;
-const taskInput = document.querySelector("#txtTaskName");
-const btnClear = document.querySelector("#btnClear");
-const filters = document.querySelectorAll(".filters span");
+// NOTE Degiskenler bu sekilde tek seferde de tanimlanabilir, ama pratikte digerinden bir farki yok, iki turlu de olur
+let editId, isEditTask = false;
 
-displayTasks(document.querySelector("span.active").id);
+const taskInputSelectorQuery = "#txtTaskName";
+const btnClearSelectorQuery = "#btnClear";
+const filtersSelectorQuery = ".filters span";
+const spanActiveSelectorQuery = "span.active";
 
-document.querySelector("#btnAddNewTask").addEventListener("click", newTask);
+const taskInput = document.querySelector(taskInputSelectorQuery);
+const btnClear = document.querySelector(btnClearSelectorQuery);
+const filters = document.querySelectorAll(filtersSelectorQuery);
+const spanActive = document.querySelector(spanActiveSelectorQuery);
 
-document
-    .querySelector("#btnAddNewTask")
-    .addEventListener("keypress", function () {
-        if (key == "enter") {
-            document.getElementById("btnAddNewTask").click();
-        }
-    });
+// TODO Yukarida filters diye bir tanim var, ama bu fonksiyonun scope'si icersinde de filters diye bir degisken kullanilmis. Bu durum shadow-variables sikintisini olusturacaktir. O sebeple bir scope icerisinde ust scopeden bir degisken ismi kullanmamaya dikkat etmenizi oneririm
+function displayTasks(filterName) {
+  let ul = document.getElementById("task-list");
 
-for (let span of filters) {
-    span.addEventListener("click", function () {
-        document.querySelector("span.active").classList.remove("active");
-        span.classList.add("active");
-        displayTasks(span.id);
-    });
-}
+  // TODO Bu proje icin sorun degil ama `innerHTML` uzerinde degisiklik yapmak genelde cok guvenli bir islem degildir. Ama su an icin bu hali kalabilir, React gibi teknolojilere gectiginizde bu sekilde islemler yapmaniz kesinlikle yasak olacak, react direkt calismiyor bu sekilde
+  ul.innerHTML = "";
 
-function displayTasks(filters) {
-    let ul = document.getElementById("task-list");
+  // TODO Karsilastirma islemleri icin `==` kullanimindan kacinmanizi oneririm, artik guvenli sayilmiyor, onun yerine `===` kullanmaniz daha iyi olacaktir, aralarindaki farklari arastirmanizi oneririm, is gorusmelerinde soruyor herkes
+  // NOTE gorevListesi degiskeni bir array oldugu icin kendi array fonksiyonlarina sahip. `length` bunlardan birisi, arraydaki eleman sayisini verir
 
-    ul.innerHTML = "";
+  if (gorevListesi.length === 0) {
+    // Eger listede eleman yoksa bu gerceklesiyor
+    ul.innerHTML = "<p class='p-3 m-0'><b>Task list is empty</b></p>";
+  } else {
+    // Listede elemanlar varsa bu kisim gerceklesiyor
+    // NOTE Asagidaki tanimlama, gorev listesindeki elemanlari siradan tek tek gez, her seferinde siradaki degeri `gorev` isimli degiskene aktar diyor.
+    for (const gorev of gorevListesi) {
+      // TODO Uzerinde bir degisiklik yapmayacaginiz degiskenleri `const` ile tanimlamak daha iyi olacaktir, asagidaki `completed` degiskeni tanimlandiktan sonra bir daha degismiyor
+      const completed = gorev.durum === "completed" ? "checked" : "";
 
-    if (gorevListesi.length == 0) {
-        ul.innerHTML = "<p class='p-3 m-0'><b>Task list is empty</b></p>";
-    } else {
-        for (let gorev of gorevListesi) {
-            let completed = gorev.durum == "completed" ? "checked" : "";
-
-            if (filters == gorev.durum || filters == "all") {
-                let li = `
+      if (filterName === gorev.durum || filterName === "all") {
+        let li = `
                 <li class="task list-group-item">
                     <div class="form-check">
                         <input
@@ -85,89 +87,113 @@ function displayTasks(filters) {
                 </li>
             `;
 
-                ul.insertAdjacentHTML("beforeend", li);
-            }
-        }
+        ul.insertAdjacentHTML("beforeend", li);
+      }
     }
+  }
+}
+
+function status(selectedTask) {
+  let label = selectedTask.parentElement.lastElementChild;
+  let durum;
+
+  if (selectedTask.checked) {
+    label.classList.add("checked");
+    durum = "completed";
+  } else {
+    label.classList.remove("checked");
+    durum = "pending";
+  }
+
+  for (const gorev of gorevListesi) {
+    if (gorev.id === selectedTask.id) {
+      gorev.durum = durum;
+    }
+  }
+
+  displayTasks(document.querySelector("span.active").id);
+
+  localStorage.setItem(localStorageKey, JSON.stringify(gorevListesi));
 }
 
 function newTask(event) {
-    let taskInput = document.querySelector("#txtTaskName");
+  event.preventDefault();
 
-    if (taskInput.value == "") {
-        alert("Görev Girmelisiniz!");
+  let taskInput = document.querySelector(taskInputSelectorQuery);
+
+  if (taskInput.value === "") {
+    alert("Görev Girmelisiniz!");
+  } else {
+    if (!isEditTask) {
+      // ekleme
+      gorevListesi.push({
+        id: gorevListesi.length + 1,
+        gorevAdi: taskInput.value,
+        durum: "pending",
+      });
     } else {
-        if (!isEditTask) {
-            // ekleme
-            gorevListesi.push({
-                id: gorevListesi.length + 1,
-                gorevAdi: taskInput.value,
-                durum: "pending",
-            });
-        } else {
-            // güncelleme
-            for (let gorev of gorevListesi) {
-                if (gorev.id == editId) {
-                    gorev.gorevAdi = taskInput.value;
-                    taskInput.value = "";
-                }
-                isEditTask = false;
-            }
+      // güncelleme
+      for (let gorev of gorevListesi) {
+        if (gorev.id === editId) {
+          gorev.gorevAdi = taskInput.value;
+          taskInput.value = "";
         }
-
-        taskInput.value = "";
-        displayTasks(document.querySelector("span.active").id);
-        localStorage.setItem("gorevListesi", JSON.stringify(gorevListesi));
+        isEditTask = false;
+      }
     }
 
-    event.preventDefault();
+    taskInput.value = "";
+    displayTasks(spanActive.id);
+
+    localStorage.setItem(localStorageKey, JSON.stringify(gorevListesi));
+  }
 }
 
 function deleteTask(id) {
-    let deletedId;
-    for (index in gorevListesi) {
-        if (gorevListesi[index].id == id) {
-            deletedId = index;
-        }
+  let deletedId;
+  for (const index in gorevListesi) {
+    if (gorevListesi[index].id === id) {
+      deletedId = index;
     }
-    gorevListesi.splice(deletedId, 1);
-    displayTasks(document.querySelector("span.active").id);
-    localStorage.setItem("gorevListesi", JSON.stringify(gorevListesi));
+  }
+
+  gorevListesi.splice(deletedId, 1);
+  displayTasks(spanActive.id);
+
+  localStorage.setItem(localStorageKey, JSON.stringify(gorevListesi));
 }
 
 function editTask(taskId, taskName) {
-    editId = taskId;
-    isEditTask = true;
-    taskInput.value = taskName;
-    taskInput.focus();
-    taskInput.classList.add("active");
+  editId = taskId;
+  isEditTask = true;
+  taskInput.value = taskName;
+  taskInput.focus();
+  taskInput.classList.add("active");
+}
+
+// TODO Genel aliskanlik olarak ust satirlarda tanimlanmamis bir deger ya da fonksiyonu kullanmamaya calisin, kafa karisikligina sebep olmasin. JS hoisting diye bir konu var, o sebeple bu sekilde calisiyor, ama cogu dilde bu sekilde kullanimlarda hata alirsiniz, ondan genel olarak bu aliskanlik oldukca faydali olur
+displayTasks(spanActive.id);
+
+const btnAddNewTaskSelectorQuery = "#btnAddNewTask";
+
+document.querySelector(btnAddNewTaskSelectorQuery).addEventListener("click", newTask);
+document.querySelector(btnAddNewTaskSelectorQuery).addEventListener("keypress", function (event) {
+    if (event.code === "enter") {
+        document.getElementById(btnAddNewTaskSelectorQuery).click();
+    }
+});
+
+for (let span of filters) {
+    span.addEventListener("click", function () {
+        document.querySelector(spanActiveSelectorQuery).classList.remove("active");
+        span.classList.add("active");
+        displayTasks(span.id);
+    });
 }
 
 btnClear.addEventListener("click", function () {
     gorevListesi.splice(0, gorevListesi.length);
-    localStorage.setItem("gorevListesi", JSON.stringify(gorevListesi));
+    localStorage.setItem(localStorageKey, JSON.stringify(gorevListesi));
+
     displayTasks("all");
 });
-
-function status(selectedTask) {
-    let label = selectedTask.parentElement.lastElementChild;
-    let durum;
-
-    if (selectedTask.checked) {
-        label.classList.add("checked");
-        durum = "completed";
-    } else {
-        label.classList.remove("checked");
-        durum = "pending";
-    }
-
-    for (let gorev of gorevListesi) {
-        if (gorev.id == selectedTask.id) {
-            gorev.durum = durum;
-        }
-    }
-
-    displayTasks(document.querySelector("span.active").id);
-
-    localStorage.setItem("gorevListesi", JSON.stringify(gorevListesi));
-}
